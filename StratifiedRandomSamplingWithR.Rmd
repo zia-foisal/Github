@@ -1,4 +1,11 @@
-
+---
+title: "Spatial Sampling with R"
+author: "Zia Foisal"
+date: "2022-06-15"
+output:
+  html_document:
+    keep_md: true
+---
 # Reading and writing Camp Boundaries [/shapefiles]
 
 In some cases you may need to read in camp boundary data. This may be so that you can join this data to other data sets that you will use for sampling, such as infrastructure data (e.g. PANDA WASH Infrastructure Assessment).
