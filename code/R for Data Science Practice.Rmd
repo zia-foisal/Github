@@ -1,0 +1,249 @@
+---
+title: "R for Data Science Pracice"
+author: "Md. Zia Uddin Foisal"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, include=TRUE}
+library(dplyr)
+library(ggplot2)
+mpg
+
+
+#Make a scatterplot of hwy and cyl. we can mapping the aesthestics to reveal extra information
+# aesthestics could be size, shape, colors, alpha
+
+ggplot(data = mpg)+
+  geom_point(mapping = aes(x = displ, y = hwy), color = "red")+
+  facet_wrap(~cyl)
+
+ggplot(data = mpg, mapping = aes(displ, hwy))+
+  geom_point(mapping = aes(color = class))+
+  geom_smooth()
+
+```
+
+
+```{r}
+ggplot(data = mpg) +
+  geom_point(mapping = aes(x = hwy, y = cty)) +
+  facet_grid(drv ~ cyl)
+
+# drv ~ . facet by values of drv on the y-axis
+
+ggplot(data = mpg)+
+  geom_point(mapping = aes(displ,hwy))+
+  facet_grid(drv~.)
+
+# While, . ~ cyl will facet by values of cyl on the x-axis.
+ggplot(data = mpg)+
+  geom_point(mapping = aes(displ,hwy))+
+  facet_grid(. ~cyl)
+```
+```{r}
+
+
+
+# Geomeetric objects
+
+
+ggplot(data = mpg)+
+  geom_smooth(mapping = aes(x = displ, y = hwy, linetype =  drv))
+
+# GEOM_SMOOTH separates the cars into three lines based on car's drive train
+ 
+ggplot(data = mpg)+
+  geom_point(mapping = aes(x = displ, y = hwy, color = drv))+
+  geom_smooth(mapping = aes(x  = displ, y = hwy,  color = drv))
+
+# geom smooth uses single geometric object to display multiple rows of data 
+# For these geoms, you can set the grouping variable to a categorical variable
+
+ggplot(data = mpg)+
+  geom_smooth(mapping = aes(x = displ, y = hwy, group = drv))
+
+ggplot(data = mpg)+
+  geom_smooth(mapping = aes(x = displ, y = hwy, color = drv)
+              , show.legend = FALSE
+              )
+# passing global mapping and local mapping
+
+ggplot(data = mpg, mapping = aes(x = displ, y = hwy))+
+  geom_point(mapping = aes(color = class))+
+  geom_smooth()
+
+# local data argument overrides the global arguments in the geom smooth functions 
+
+ggplot(data = mpg, mapping = aes(x = displ, y = hwy))+
+  geom_point(mapping = aes(color = class))+
+  geom_smooth(data = filter(mpg, class == "suv"), se = FALSE)
+
+
+ggplot(data = mpg, mapping = aes(x = displ, y = hwy))+
+  geom_point(mapping = aes(color = class))+
+  geom_smooth(data = filter(mpg, class == "suv"))
+
+
+ggplot(data = mpg, mapping = aes(x = displ , y = hwy))+
+  geom_point()+
+  geom_smooth()
+
+
+ggplot(data = mpg, mapping = aes(x = displ , y = hwy))+
+  geom_point()+
+  geom_smooth(mapping = aes(group = drv),
+              se = FALSE
+              )
+
+
+ggplot(data = mpg, mapping = aes(x = displ , y = hwy, color = drv))+
+  geom_point()+
+  geom_smooth(data  = filter (mpg, drv == "r"), mapping = aes(color = drv),
+              se = FALSE
+  )
+
+
+ggplot(data = mpg, mapping = aes(x = displ , y = hwy, color = drv))+
+  geom_point()+
+  geom_smooth( mapping = aes(linetype = drv),
+              se = FALSE
+  )
+
+
+ggplot(data = mpg, mapping = aes(x = displ , y = hwy, color = drv))+
+  geom_point(mapping = aes(color = drv))
+```
+
+
+
+### STATISTICAL TRANSFORMATIONS 
+##### BAR CHART 
+
+```{r}
+ggplot(data = diamonds)+
+  geom_bar(mapping = aes(x=cut))
+
+
+ggplot(data = diamonds) +
+  stat_summary(mapping = aes(x = cut, y = depth))
+
+# stat_summary() summarises the y values for each unique x value, 
+#to draw attention to the summary you are drawing
+
+ggplot(data = diamonds) +
+  stat_summary( mapping = aes(x = cut, y = depth),
+               fun.ymin = min,
+               fun.ymax = max,
+               fun.y = median
+              )
+
+ggplot(data = diamonds) +
+  geom_pointrange(
+    mapping = aes(x = cut, y = depth),
+    stat = "summary",
+    fun.min = min,
+    fun.max = max,
+    fun = median
+  )
+```
+
+
+
+# override the default mapping from transformed variable to aesthetics.
+# Display a bar chart proportion, rather than count
+
+```{r}
+ggplot(data = diamonds)+
+  geom_bar(mapping = aes(x=cut, y= ..prop.., group = 1))
+
+
+
+ggplot(data = diamonds)+
+  geom_bar(mapping = aes(x=cut, fill =  cut))
+
+
+
+ggplot(data = diamonds)+
+           stat_summary(mapping = aes(x = cut, y = depth),
+                        fun.min = min,
+                        fun.max = max,
+                        fun = median)
+
+
+
+
+ggplot(data = diamonds)+
+  geom_bar(mapping = aes(x = cut, color = cut))
+
+
+ggplot(data = diamonds)+
+  geom_bar(mapping = aes(x = cut, fill = cut))
+
+
+ggplot(data =  diamonds)+
+  geom_bar(mapping = aes(x = cut, fill = clarity))
+
+
+ggplot(data = diamonds, 
+       mapping = aes( x = cut, fill = clarity))+
+  geom_bar(alpha = 1/5, position = "identity")+
+  coord_polar()
+
+
+ggplot(data = diamonds, mapping = aes( x= cut, color = clarity))+
+  geom_bar(fill = NA, position = "identity")
+
+
+ggplot(data = diamonds, mapping = aes(x= cut, fill = clarity))+
+  geom_bar(position = "fill")
+
+
+
+ggplot(data = diamonds, mapping = aes(x= cut, fill = cut))+
+  geom_bar(position = "dodge")
+
+
+
+ggplot(data = mpg)+
+  geom_point(mapping = aes(x=displ, y = hwy),
+             position = "jitter")
+
+
+
+ggplot(data = mpg, mapping = aes(x = cty, y = hwy, color = class))+
+  geom_point()+
+  geom_jitter(width =0.5)
+
+
+ggplot(data = mpg)+
+  geom_boxplot(mapping = aes(x= class, y = hwy))+
+  coord_flip()
+
+bar <- ggplot(data = diamonds)+
+  geom_bar(mapping = aes(x = cut, fill = cut),
+           show.legend = FALSE,
+           width = 1)+
+  theme(aspect.ratio = 1)+
+  labs(x= NULL, y = NULL)
+
+bar + coord_flip()
+bar + coord_polar()
+
+
+
+ggplot(data = mpg, mapping = aes(x = class, y = hwy)) +
+  geom_boxplot() +
+  coord_flip() +
+  labs(y = "Highway MPG",
+       x = "Class",
+       title = "Highway MPG by car class",
+       subtitle = "1999-2008",
+       caption = "Source: http://fueleconomy.gov")
+```
+
