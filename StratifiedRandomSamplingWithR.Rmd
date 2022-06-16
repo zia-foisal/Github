@@ -402,9 +402,6 @@ kml(eberg, colour = SNDMHT_A, size = CLYMHT_A, alpha = 0.75, shape=shape,
 ```
 # Sampling with butteR
 
-butteR is a useful tool for sampling and has been used a lot by the BGD mission in the past but Zack Arno (now left) and Mehedi Khan (now Iraq mission). It can be found on GitHub. I have not successfully used it and have prefered to use by own code above. However, it is a useful tool and should be used where valuable.
-
-The following is one example, though I have not tested it.
 ```{r}
 library(butteR)
 ## Example
