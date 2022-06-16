@@ -1,0 +1,451 @@
+# REACH BGD Sampling Script Template
+#### 22/07/2021
+#### Ben Smith
+
+
+# Introduction
+This template is designed to give examples of the different items of code that you may need when sampling spatial data. One of the key resources that you may wish to use when doing samples is the Stratified Sampler function of the butteR packaged (developed specifically for REACH BGD and used across IMPACT). However, sampling itself is a relatively simple process that can easily be completed using basic R and some useful packages. 
+
+Once samples have been generated it is important to check that they work correctly with the tools we use. This will typically be Maps.Me, a phone based map app that allows for offline downloads of base maps and MKL files. Key things to check are that the KML document has an appropriate document name (as this is what it will be called in Maps.Me). Note that the document name is not the same as the file name. 
+
+Samples for camp surveys are always split by camp, with 1 file per camp. This is so that enumerators do not get confused and conduct surveys in the wrong camp by mistake. Uploading sample points to the phones does take time however and so ways to upload multiple camps at once should be explored. This may be by colouring camps different colours, or my writing multiple, non-adjacent camps within a single file. 
+
+Samples are typically built using the structure footprints so that enumerators can go straight to shelters. When using these data sets, it is sensible to use the most up to date footprint and to remove small structures (which may be latrines) and to remove facilities (currently a points dataset). Centroids of the structure footprints for 2020 and 2019 can be found in the GIS Folders with small structures and facilities removed.
+
+The following code chunks give examples of code that you may wish to use when writing yourown sampling scripts. Note that the different blocks may use date in different forms that may not always be compatible (e.g. spatialPolygonDatabase vs ???)
+
+When creating samples, do not forget that some samples may be incorrect or survey recipients may not wish to take part and that it is therefore sensible to have a buffer of samples as backup. We typically use 10%, but you can discuss this with the AO.
+
+
+# Reading and writing Camp Boundaries [/shapefiles]
+
+In some cases you may need to read in camp boundary data. This may be so that you can join this data to other data sets that you will use for sampling, such as infrastructure data (e.g. PANDA WASH Infrastructure Assessment).
+
+```{r}
+library(sf)
+
+# Load in camp boundaries:
+camp_boundary <- st_read(
+  # Folder path
+  dsn = "E:/Synology/01_GIS/Camp Boundary Original/200908_rrc_outline_camp_al1", 
+  # Layer name (file name) - you do not need the.shp as st_read only reads .shp files:
+  layer = "200908_RRC_Outline_Camp_AL1") 
+
+# Load in block boundaries with slightly different way of setting the file name: 
+foldergeo <- "E:/Synology/01_GIS"
+
+block_boundary <- st_read(
+  dsn = file.path(foldergeo, "Camp Boundary Original/210415_RRC_Outline_block_AL2"),
+  layer = "210413_RRC_Outline_Block_AL2")
+
+# Join the camp and blocks together if needed:
+camp_block_boundary <- st_join(camp_boundary, block_boundary)
+
+# Trim down the boundary data to only include some columns:
+library(dplyr)
+camp_block_boundary_trim <- camp_block_boundary %>% select(Camp_Name, CampName, Block_Name)
+
+# If there are camps/blocks to avoid then you could read them in from a CSV or write them out. Then you can remove them from the layers if you wish.
+locations_to_aviod <- c("Camp 1E", "Camp 1W")
+... = camp_block_boundary[!camp_block_boundary$Camp_Name %in% locations_to_aviod,]
+... = camp_block_boundary %>% filter(Camp_Name %in% locations_to_aviod)
+
+# Write the resultant camp / block layer as a shapefile:
+st_write(camp_block_boundary, "Filepath.../CampBlock.shp")
+
+```
+
+
+You can write the camp boundaries to KML files using the following code. These may be needed during sampling. HOWEVER, these files do not load on Maps.Me - this needs additional work.
+
+```{r}
+
+camp_boundary_kml = as_Spatial(camp_boundary)
+plotKML::kml(
+  obj = camp_boundary_kml,# ... = 
+  # points_names = camp_sample_points$ID,
+  folder.name = "Camp Boundaries",
+  labels = camp_boundary_kml$Camp_Name,
+  LabelScale=0.5,
+  colour = "red",
+  fill = FALSE,
+  width = 2,
+  outline = TRUE,
+  file.name = "E:/Synology/01_GIS/Camp Boundary Original/Camp_boundary_kml.kml")
+
+library(maptools)
+kmlPolygons(
+  obj = camp_boundary_kml,
+  kmlfile = "E:/Synology/01_GIS/Camp Boundary Original/Camp_boundary_2_kml.kml",
+  border = "red",
+  lwd = 4,
+  name = camp_boundary_kml$Camp_Name, 
+  kmlname = "Camp Boundaries"
+)
+
+# The following will write a KML, but it does not have the desired thickness to the lines. This can be added using notepad++ 
+# https://stackoverflow.com/questions/57415464/label-kml-features-using-st-write
+camp_boundary$Name = camp_boundary$Camp_Name
+st_write(camp_boundary, "E:/Synology/01_GIS/Camp Boundary Original/Camp_boundary_3_kml.kml", driver = "kml", delete_dsn = TRUE)
+# To control the line thickness:
+# 1. Open the file in notepad++
+# 2. Find instances of:  <LineStyle><color>ff0000ff</color></LineStyle>
+# 3. Replace these with: <LineStyle><width>4</width><color>ff0000ff</color></LineStyle>
+
+
+
+```
+
+
+# Reading Shapefiles using st_read:
+
+If sampling shelters, load these in. Here we will use polygons and then do some processing, but it is simplest to use the centroids directly (chunk below).  
+```{r}
+shelters <- st_read(
+  dsn = file.path(foldergeo, "02_infrastructure/01_shelters/03_unosat_footprints/BGD_Camp_ShelterFootprint_UNOSAT_REACH_v1_January019/"),
+  layer = "BGD_Camp_ShelterFootprint_UNOSAT_REACH_v1_January2019")
+
+# Remove all shelters smaller than 5m
+hh_sample <- shelters %>% select(id,area_m2)
+footprints_small_removed <- hh_sample %>% filter(area_m2>5)
+ 
+# Create centroids of remaining shelters:
+ft_centroind <- st_centroid(footprints_small_removed)
+
+# Join these centroids to the camp and block layer above, so that they can be split by block later:
+ft_JoinedCamp      <- st_join(ft_centroind, camp_boundary)   %>% select(id, Camp_Name, Upazila)
+ft_jointedCampBloc <- st_join(ft_JoinedCamp, block_boundary) %>% select(id, Camp_Name, Block_Name, Upazila)
+```
+
+
+It may be simplest to read in the data to be sampled directly having formatted it in advance in QGIS/Arc. Here, we read in the shelter centroids with small polygons and facilities already removed:
+```{r}
+# 2020 Shelter Centroids:
+shelters_2020 <- st_read(
+  dsn = file.path(foldergeo, "/02_infrastructure/01_shelters/Shelters for Sampling/REACH_BGD - Rohingya Refugee Camp - Structure Footprint March 2020 - Filtered for sampling - Centroids.shp"))
+
+# 2019 Shelter Centroids:
+shelters_2019 <- st_read(
+  dsn = file.path(foldergeo, "/02_infrastructure/01_shelters/Shelters for Sampling/BGD_Camp_ShelterFootprint_UNOSAT_REACH_v1_January2019 - Filtered for Sampling - Centroids.shp"))
+
+# Rename the 2019 column name containing camp names to match the 2020 data:
+colnames(shelters_2019)[7] = "Camp_Name"
+
+```
+
+# Sample Shelter Centroids
+
+The following code chunk was used (along with the one above) to create the sample points for the 2021 MSNA. Note that the 2020 shelter footprint is not complete (July 2021) and the corresponding centroid .shp file has these camps removed to avoid confusion. The samples therefore reply on the 2019 data for camps 14/15/16/27. This should be updated in August 2021.
+
+The first step here is to get a list of the camps to sample. This can be done, as it is below, by getting the camps names directly from the shapefiles, or by writing them in, or by creating a csv - the latter may be useful if you have variable numbers of samples per camp (or area) that you may want an AO to write out in a csv for you. 
+
+```{r}
+library(plotKML)
+
+# Find the camps to sample:
+camps_to_sample = unique(shelters_2019$Camp_Name) # Use 2019 as 2020 is missing some camps.
+camps_to_sample = camps_to_sample[!is.na(camps_to_sample)]
+
+# Run though each of the specified camps and create sample points:
+for(x in camps_to_sample){
+  
+  # Check whether to use data from 2020 or 2019:
+  if(x %in% camps_2019){centroids_in_camp = shelters_2019
+  } else{ centroids_in_camp = shelters_2020}
+  
+  
+  # Subset the data to the desired camo centroids:
+  centroids_in_camp = centroids_in_camp[which(centroids_in_camp$Camp_Name==x),]
+  
+  # Set the sample size. You could also read the sample size from a csv/dataframe if it varies between camps.
+  sample_size = 100
+  
+  # Sample points from the centroids:
+  centroid_sample = sample(x = 1:nrow(centroids_in_camp), size = sample_size, replace = FALSE)
+  
+  # Reduce the shelter centroids to just those sampled above:
+  centroid_sample = centroids_in_camp[centroid_sample,]
+  
+  # Order and label the sample points numbers from West to East so that they can be found by enumerators:
+  Easting = sapply(centroid_sample$geometry,"[", 1)
+  centroid_sample = centroid_sample[order(Easting),]
+  
+  # Name the points:
+  if(x == "Nayapara RC"){
+    centroid_sample$ID = paste0("NRC_", 1:100)
+  } else if(x == "Kutupalong RC"){
+    centroid_sample$ID = paste0("KRC_", 1:100)
+  } else if(grep(pattern = "Extension", x = x)){
+    centroid_sample$ID = paste0("C", unlist(strsplit(x, " "))[2], "X_", 1:100)
+  } else {centroid_sample$ID = paste0("C", unlist(strsplit(x, " "))[2], "_", 1:100)}
+  
+  # Write a KML file that can be opened using Maps.Me:
+  camp_sample_points = as_Spatial(centroid_sample)
+  plotKML::kml(
+    obj = camp_sample_points, points_names = camp_sample_points$ID,
+    folder.name = x,
+    file.name = paste0("/03_GIS/Samples for in Person Data Collection (camps)/",
+                       x, "_sample_points.kml"))
+  
+}
+
+# Other plotKML::kml arguments include the following, however i have not yet needed them: 
+# kmz=FALSE,
+# altitude=0,
+# plot.labpt=TRUE,
+# labels="SomeLabels",
+# LabelScale=0.5
+
+```
+
+You can view the KMLs in QGIS, Google Earth, Maps.Me and Notepad++. Note that they appear differently in Maps.Me to how they appear in QGIS.
+
+# Read in Shapefiles using rgdal
+
+```{r}
+# https://www.neonscience.org/resources/learning-hub/tutorials/dc-open-shapefiles-r
+# for vector work; sp package will load with rgdal.
+library(rgdal)
+
+shelters_2020_ogr <- readOGR(
+  dsn=path.expand("/02_infrastructure/01_shelters/02_reach_modified_footprints"),
+  layer ="REACH_BGD - Rohingya Refugee Camp - Structure Footprint March 2020 - edited 25_04_2021")
+
+
+facilities_ogr = readOGR(
+  dsn=path.expand("/200128_Facilities_V25_Shapefile"),
+  layer="200128_Facilities_V25_Shapefile")
+
+```
+
+Find which shelters may be facilities:
+
+[I think that this works, but maybe write the files and test it in QGIS before you rely on it...]
+```{r}
+# Subset the data down to just camp 1E for speed :
+names(facilities_ogr)
+unique(facilities_ogr$Camp_Name)
+facilities_ogr = facilities_ogr[which(facilities_ogr$Camp_Name=="Camp 01E"),]
+shelters_2020_ogr = shelters_2020_ogr[which(shelters_2020_ogr$Camp_Name=="Camp 1E"),]
+
+# Give the Shelters IDs
+shelters_2020_ogr$ID = 1:nrow(shelters_2020_ogr)
+
+# Find which polygons contain facility centroids:
+shelters_that_are_facilities = over(x = facilities_ogr, y = shelters_2020_ogr)
+shelters_that_are_facilities = shelters_that_are_facilities[!is.na(shelters_that_are_facilities$ID), "ID"]
+
+  # This code can be used for checking the process. Run after shelters_that_are_facilities created:
+  plot(shelters_2020_ogr[shelters_2020_ogr$ID %in% shelters_that_are_facilities,], col="lightgreen")
+  plot(shelters_2020_ogr[!shelters_2020_ogr$ID %in% shelters_that_are_facilities,], col="lightblue", add=TRUE)
+  plot(shelters_2020_ogr, add = TRUE)
+
+# Reduce the resultant dataframe to a list of shelters containing facilities:
+shelter_facilities = shelters_2020_ogr$ID[!is.na(shelters_that_are_facilities$ID)]
+# Remove these shelters from the SpatialPolygonsDataFrame:
+shelters_2020_ogr <- shelters_2020_ogr[!shelters_2020_ogr$ID %in% shelter_facilities,]
+
+```
+
+# Write shapefiles using rgdal
+```{r}
+writeOGR(obj = centroids_2020,  dsn = '/Desktop', 
+         layer = 'centroids_2020', driver="ESRI Shapefile") 
+```
+
+# Create centroids for sampling -------------------------------------------
+
+```{r}
+centroids_2020 = SpatialPointsDataFrame(gCentroid(shelters_2020, byid=TRUE), shelters_2020@data, match.ID=FALSE)
+centroids_2019 = SpatialPointsDataFrame(gCentroid(shelters_2019, byid=TRUE), shelters_2019@data, match.ID=FALSE)
+```
+
+# Quiery and Edit Spatial Data
+
+```{r}
+
+# For metadata/attributes- vectors or rasters
+library(raster) 
+
+# Explore the data:
+class(facilities_ogr)
+str(shelters_2020_ogr)
+summerise(shelters_2020_ogr)
+shelters_2020_ogr
+crs(shelters_2020_ogr)
+
+# Filter the data:
+shelters_2020_ogr <- shelters_2020_ogr[which(shelters_2020_ogr$area_m2>5),]
+
+# Assign new IDs to the data:
+shelters_2020$ID = 1:nrow(shelters_2020)
+
+```
+
+
+
+# Sample csv point data and writing to KML
+
+This code was used for the PANDA assessment to sample WASH infrastructure data:
+
+https://mitchellgritts.com/posts/load-kml-and-kmz-files-into-r/
+```{r}
+library(plotKML)
+plottKML::
+path <- "E:/test"
+
+PANDA_points <- st_read(dsn = file.path(path, "pilot_final_sample_points.kml"))
+
+description_ends <- substr(x = PANDA_points$Name, 
+                           start = nchar(PANDA_points$Name), 
+                           nchar(PANDA_points$Name))
+
+# PANDA_points$Description[description_ends == "e"] <- "latrine"
+# PANDA_points$Description[description_ends == "s"] <- "bathing_cubicle"
+# PANDA_points$Description[description_ends == "p"] <- "tubewell_handpump"
+
+PANDA_pilot_points_lat = as_Spatial(PANDA_points[description_ends == "e",])
+PANDA_pilot_points_bath = as_Spatial(PANDA_points[description_ends == "s",])
+PANDA_pilot_points_pump = as_Spatial(PANDA_points[description_ends == "p",])
+
+plotKML::kml(
+  obj = PANDA_pilot_points_lat, 
+  folder.name = "Sample Points for PANDA Latrine Survey",
+  file.name = "/70XXX - FCPO WASH/03 GIS/pilot_final_sample_points_latrine.kml",
+  points_names = PANDA_pilot_points_lat$Name)
+
+plotKML::kml(
+  obj = PANDA_pilot_points_bath,
+  folder.name = "Sample Points for PANDA Bathing Survey",
+  file.name = "H/03 GIS/pilot_final_sample_points_bathing_cubicle.kml",
+  points_names = PANDA_points_bath$Name)
+
+plotKML::kml(
+  obj = PANDA_pilot_points_pump, 
+  folder.name = "Sample Points for PANDA Handpump Survey",
+  file.name = "03 GIS/pilot_final_sample_points_tubewell_handpump.kml",
+  points_names = PANDA_pilot_points_pump$Name, colour = "black")
+
+```
+
+# Read shp and then write KML
+```{r}
+library(rgdal)
+library(plotKML)
+Block_Name_C03_G = readOGR(dsn = "E:/Camp 3 Block level Kml files/Shapefiles/Block_Name_C03_G.shp") 
+# Camp_3_single_facility_single door shapefiles
+
+#read with ST:
+#Doors_missing_shelter_Polygon <- st_read(
+ # dsn = "E:/September 7/shapefiles",
+ # layer = "Sample_points_Camp_3_Doors_missing_shelter_Polygon")
+
+#read with rGDAL:
+#Doors_missing_shelter_Polygon <- readOGR(
+  #  dsn="E:/September 7/shapefiles",
+   # layer ="Sample_points_Camp_3_Doors_missing_shelter_Polygon")
+
+plot(Block_Name_C03_G)
+str(Block_Name_C03_G)
+
+#Doors_missing_shelter_Polygon_sp = as_Spatial(Doors_missing_shelter_Polygon)
+
+plotKML::kml(
+  obj = Block_Name_C03_G, 
+  points_names = Block_Name_C03_G$ID_Type, 
+  #colour = PANDA_points_kml$colour, 
+  size = 5,
+  folder.name = "Block_Name_C03_G",
+  file.name = "E:/Camp 3 Block level Kml files/Block_Name_C03_G.kml")
+
+# "/03 GIS/Sampling/SS/coloured_by_attribute.kml")
+# samp = sample(x = /single_facility_single_doors$UNIQUEID, size =  10, replace = FALSE)
+# /single_facility_single_doors[/single_facility_single_doors$UNIQUEID == samp,]
+
+```
+
+
+# Colour KML Points
+
+The following code is still in development. It is designed so that points can be given differnt colours that show up on the Maps.Me. However, while this works in GIS software, it does not work in Maps.Me
+
+
+```{r}
+
+library(sf)
+library(plotKML)
+
+# load in the pilot sample KML:
+PANDA_points <- st_read(
+  dsn = "SS/pilot_final_sample_points.kml")
+
+# get the final letter of the names so that they can be classed by their name:
+description_ends <- substr(x = PANDA_points$Name, 
+                           start = nchar(PANDA_points$Name), 
+                           nchar(PANDA_points$Name))
+
+
+# Give the points a number (based on their type) that is used to colour points. 
+PANDA_points$colour = match(x = description_ends, table = c("e","s","p"))
+
+# Write the points and colour  by attribute ---------------------------------------
+PANDA_points_kml = as_Spatial(PANDA_points)
+
+plotKML::kml(
+  obj = PANDA_points_kml, 
+  points_names = PANDA_points_kml$Name, 
+  colour = PANDA_points_kml$colour, 
+  size = 5,
+  folder.name = "Sample Points Colour Test",
+  file.name = "/03 GIS/Sampling/SS/coloured_by_attribute.kml")
+
+
+# Test data ---------------------------------------------------------------
+
+# Plotting a SpatialPointsDataFrame object
+# library(rgdal)
+data(eberg)
+eberg <- eberg[runif(nrow(eberg))<.1,]
+library(sp)
+library(rgdal)
+coordinates(eberg) <- ~X+Y
+proj4string(eberg) <- CRS("+init=epsg:31467")
+## Not run: # Simple plot
+kml(eberg, file = "/03 GIS/Sampling/SS/eberg-0.kml")
+# Plot using aesthetics
+shape = "http://maps.google.com/mapfiles/kml/pal2/icon18.png"
+kml(eberg, colour = SNDMHT_A, size = CLYMHT_A, alpha = 0.75, shape=shape,
+    file = "/03 GIS/Sampling/SS/eberg-1.kml")
+    
+```
+# Sampling with butteR
+
+butteR is a useful tool for sampling and has been used a lot by the BGD mission in the past but Zack Arno (now left) and Mehedi Khan (now Iraq mission). It can be found on GitHub. I have not successfully used it and have prefered to use by own code above. However, it is a useful tool and should be used where valuable.
+
+The following is one example, though I have not tested it.
+```{r}
+library(butteR)
+## Example
+
+# Read in a csv containing the coordinate of points to sample:
+shltr_csv <- read_csv("outputs/sampling/kml/pilot/20201105_samp_remdsfdsfaining_after_pilot.csv")  #need to change everytime 
+
+# Convert these points to coordinates:
+remaining_shltr <- st_as_sf(shltr_csv, coords = c("xcoord","ycoord"), crs = 4326)
+
+# Read in a csv containing rows stating the camp and the sample size:
+sample_size2 <- read_csv("inputs/sample_size/age_disability/kmz_sample_request_Age Disability_round1.csv") #need to change everytime 
+sample_size2 <- sample_size2%>%  filter(sample_size2$number_points_w_buffer != "")
+
+# use butteR to sample the points:
+sampler_ouput <- butteR::stratified_sampler(sample.target.frame = sample_size2,
+                                            sample.target.frame.strata = "Camp_Name",
+                                            sample.target.frame.samp.size = "number_points_w_buffer",
+                                            pt.data = remaining_shltr,
+                                            pt.data.strata = "Camp_Name",
+                                            pt.data.labels = "Camp_Name",
+                                            target_gdb = write_kl,
+                                            write_remaining_sample_csv = T,
+                                            write_kml = T)
+```
+
