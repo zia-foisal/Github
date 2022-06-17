@@ -15,7 +15,6 @@ library(dplyr)
 library(ggplot2)
 mpg
 
-
 #Make a scatterplot of hwy and cyl. we can mapping the aesthestics to reveal extra information
 # aesthestics could be size, shape, colors, alpha
 
