@@ -1,0 +1,28 @@
+---
+title: "R Programminfg for Research Book Summary"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Chapter 2:  Entering and cleaning data
+
+Most ﬂat ﬁles come in two general categories:
+  1. Fixed width ﬁles : are ﬁles where a column always has the same width, for all the rows in the column.
+  2. Delimited ﬁles:
+    • “.csv”: Comma-separated values
+    • “.tab,” “.tsv”: Tab-separated values
+    • Other possible delimiters: colon, semicolon, pipe (“|”)
+
+```{r}
+#Loading the required libraries
+library(readr)
+library(tidyverse)
+
+#Loading the required data
+
+
+```
+
