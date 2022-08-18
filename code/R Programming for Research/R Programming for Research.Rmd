@@ -21,13 +21,74 @@ Most ﬂat ﬁles come in two general categories:
  # ebola <- read_csv(file = url)
  ## slice(.data = (select(.data = ebola, 1:3)), 1:3)
 
-```{r pressure= FALSE}
+#To build a logical expression to use in filter, you’ll need to know some of R’s logical operators. Some of the most commonly used ones are:
+
+Operator Meaning Example
+== equals                         category == "Acting"
+!= does not equal             category != "Comedy"
+%in% is in category             %in% c("Academic", "Science")
+is.na() is missing                is.na(job)
+!is.na() is not missing         !is.na(job)
+& and                             year == 2015 & category == "Academic"
+| or                            year == 2015 | category == "Academic"
+```{r}
 #Loading the required libraries
-library(readr)
-library(dplyr)
-library(tidyverse)
+library("dplyr")
+
 
 #Loading the required data
-wash<- read.csv("")
+daily_show <- read_csv(file = "D:/R_Programming/Github/SpatialDataWithR/data/daily_show_guests.csv", skip = 4)
+head(daily_show)
+#See the column names
+colnames(daily_show)
+
+
+#Renaming the column names
+daily_show <- rename(.data = daily_show, 
+                     year = YEAR,
+                     job = GoogleKnowlege_Occupation,
+                     date = Show,
+                     category = Group,
+                     guest_name = Raw_Guest_List)
+head(x = daily_show, 3)
+
+
+#Selecting columns
+select(.data = daily_show, job, date, category, guest_name)
+#Slicing can extract certain rows based on their position in the dataframe
+slice(.data = daily_show, 1:3)
+#To extract two random rows from the dataframe
+sample_n(tbl = daily_show, size = 2)
+
+#arrange(.data = dataframe, column_to_order_by)
+daily_show <- arrange(.data = daily_show, category)
+slice(.data = daily_show, 1:3)
+#Arranging the daatasests in dsescending orders
+daily_show <- arrange(.data = daily_show,
+                      desc(x = category))
+slice(.data = daily_show, 1:2)
+
+#Filtering certain rows
+scientists <- filter(.data = daily_show,
+                     category == "Science")
+head(x = scientists)
+
+#Changing the column names
+library(package = "stringr")
+
+mutate(.data = daily_show,
+       job = str_to_lower(string = job))
+
+
 ```
+#Chaining all the operations through pipe operator
+daily_show %>% rename(job = GoogleKnowlege_Occupation,
+                      date = Show,
+                      category = Group,
+                      guest_name = Raw_Guest_List) %>%
+ select(-YEAR) %>%
+ mutate(job = str_to_lower(job)) %>%
+ filter(category == "Science")
+ 
+ 
 
