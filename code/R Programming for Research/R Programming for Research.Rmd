@@ -31,7 +31,7 @@ list.files()
 ---
 ##To build a logical expression to use in filter\you’ll need to know some of R’s logical operators.\ Some of the most commonly used ones are:
 
-```{r ,echo=FALSE}
+```{r }
 library(knitr)
 library(kableExtra)
 library(tidyverse)
@@ -72,6 +72,7 @@ library("dplyr")
 
 
 #Loading the required data
+
 
 daily_show <- read_csv(file = "daily_show_guests.csv",show_col_types = FALSE)
 head(daily_show)
@@ -120,17 +121,24 @@ daily_show %>% rename(job = GoogleKnowlege_Occupation,date = Show,category = Gro
                       filter(category == "Science")
 ##Dates in R
 
-Abbreviation Meaning
-%m Month as a number (e.g., 1, 05)
-%B Full month name (e.g., August)
-%b Abbreviated month name (e.g., Aug)
-%y Two-digit year (e.g., 99)
-%Y Four-digit year (e.g., 1999)
-
 knitr::kable(data,
  caption = "Table with kable")
  
-| Right | Left |
+| Right | Right|
+|-------:|:------|
+|  **Abbreviation** | **Meaning**| 
+| %m | Month as a number (e.g., 1, 05) | 
+| %B  |  Full month name (e.g., August)|
+|%b|Abbreviated month name (e.g., Aug)| 
+| %y | Two-digit year (e.g., 99)|
+| %Y|Four-digit year (e.g., 1999)|
+
+##Working with dates
+
+knitr::kable(data,
+ caption = "Abbreviation Date")
+ 
+| Right | Right|
 |-------:|:------|
 |  Current format of date | format = | 
 | 10/23/2008 | “%m/%d%Y” | 
@@ -155,5 +163,301 @@ range(daily_show$date)
 #Calculate total number of days datsets covers
 diff(range(daily_show$date))
 ```
- 
+
+```{r}
+# Use `read_tsv` to read this file. Because the first line
+# of the file is *not* the column names, you need to specify what the column
+# names should be with the `col_names` parameter.
+
+#List all the available data in the directory
+list.files("./data")
+
+library(readr)
+ca_measles <- read_tsv(file = "data/measles_data/02-09-2015.txt", col_names = c("city", "count"))
+head(x = ca_measles)
+
+
+# You'll need the `readxl` package to read in the Excel file. Load that.
+library(package = "readxl")
+# Use the `read_excel` function to read in the file.
+icd10 <- read_excel(path = "data/icd-10.xls")
+head(x = icd10)
+
+
+# You'll need the `haven` function to read in the SAS file. Load that.
+library(package = "haven")
+# Use the `read_sas` function to read in this file.
+icu <- read_sas(data_file = "data/icu.sas7bdat")
+library(package = "dplyr")
+slice(.data = select(.data = icu, 1:5), 1:5)
+
+```
+
+
+
+
+
+```{r}
+# Copy this code to an R script and add comments describing what each line is doing
+# Install any packages that the code loads but that you don't have.
+library(package = "haven")
+library(package = "forcats")
+library(package = "stringr")
+
+# Reading SAS data and recoding factors
+library(package = "haven")
+icu <- read_sas(data_file = "data/icu.sas7bdat") %>%
+  select(ID, AGE, GENDER) %>%
+  rename(id = ID,
+         age = AGE,
+         gender = GENDER) %>%
+  mutate(gender = as_factor(x = gender),
+         gender = fct_recode(.f = gender,
+                             Male = "0",
+                             Female = "1"),
+         id = str_c(id)) %>%
+  arrange(age) %>%
+  slice(1:10)
+
+icu
+
+ebola_liberia <- read_csv(file = "data/country_timeseries.csv") %>%
+  select(Date, Cases_Liberia, Deaths_Liberia) %>%
+  rename(date = Date,
+         cases = Cases_Liberia,
+         deaths = Deaths_Liberia) %>%
+  mutate(ratio = deaths / cases) %>%
+  filter(!is.na(x = cases))
+head(x = ebola_liberia)
+```
+
+##CHAPTER 3 : Exploring data
+
+*-range(),min(), max(),mean(), median(),sd() ,table() ,cor(),summary(),
+-Range (minimum and maximum) of vector, Minimum or maximum of vector, Mean or median of vector, 
+Standard deviation of vector, Number of observations per level for a factor vector,
+Determine correlation(s) between two or more vectors,
+Summary statistics depends on class*
+**all of these functions takes the *na.rm = TRUE* 
+
+All of these functions take, as the main argument, the vector or vectors for which
+you want the statistic. If there are missing values in the vector, you’ll typically need
+to add an argument to say what to do with the missing values. The parameter name
+for this varies by function, but for many of these functions it’s na.rm = TRUE or
+use="complete.obs".
+##GGPLOT2 
+Code Description
+‘x‘ Position on x-axis
+‘y‘ Position on y-axis
+‘shape‘ Shape
+‘color‘ Color of border of elements
+‘ﬁll‘ Color of inside of elements
+‘size‘ Size
+‘alpha‘ Transparency (1: opaque; 0: transparent)
+‘linetype‘ Type of line (e.g., solid, dashed)
+
+There are also a number of elements that you can add onto a ggplot object using +.
+A few that are used very frequently are:
+Element Description
+‘ggtitle‘ Plot title
+‘xlab‘, ‘ylab‘ x- and y-axis labels
+‘xlim‘, ‘ylim‘ Limits of x- and y-axis
+```{r}
+library(faraway)
+library(dplyr)
+library(ggplot2)
+
+data(nepali)
+
+#Each observation is a single measurement for a child; there can be multiple observations per child. Let's subset out child id, sex, weight, height, and age, and then limit to each child’s ﬁrst measurement.
+
+nepali <- nepali %>%
+  # Subset to certain columns
+  select(id, sex, wt, ht, age) %>%
+  # Convert id and sex to factors
+  mutate(id = factor(id),
+         sex = factor(sex, levels = c(1, 2),
+                      labels = c("Male", "Female"))) %>%
+  # Limit to first obs. per child
+  distinct(id, .keep_all = TRUE)
+head(nepali)
+
+
+#For geom_histogram(), the main aesthetic is x, the (numeric) vector for which you want to create a histogram:
+
+ggplot(nepali, aes(x = ht)) +
+  geom_histogram(fill = "lightblue", color = "black", bins = 40) +
+  ggtitle("Height of children") +
+  xlab("Height (cm)") + xlim(c(0, 120))
+
+ggplot(nepali,aes(x = ht, y = wt, color = sex)) +
+  geom_point(color = "blue", size = 0.5) +
+  ggtitle("Weight versus Height") +
+  xlab("Height (cm)") + ylab("Weight (kg)")
+
+#boxplots by a factor. In this case, you’ll need to include two aesthetics (x and y) when you initialize the ggplot object.
+
+ggplot(nepali, aes(x = sex, y = ht, group = sex)) +
+  geom_boxplot() +
+  xlab("Sex")+ ylab("Height (cm)")
+
+#For example, you can use the ggpairs function from the GGally package to plot all pairs of scatterplots for several variables. Notice how this output shows continuous and binary variables diﬀerently.
+
+library(GGally)
+ggpairs(nepali[, c("sex", "wt", "ht", "age")])
+cor(nepali[ , c("wt", "ht", "age")], use = "complete.obs")
+
+#ummaries by group using dplyr (e.g., mean weight by sex), use group_by before running summarize:
+
+nepali %>%
+  group_by(sex) %>%
+  summarize(mean_wt = mean(wt, na.rm = TRUE),
+            n_children =n(),
+            first_id = first(id))
+
+nepali %>%
+  mutate(is_male = sex == "Male") %>%
+  group_by(is_male) %>%
+  summarize(n_children = n())
+```
+
+```{r}
+library(package = "lubridate")
+
+class(x = daily_show$date)
+
+daily_show1 <- mutate(.data = daily_show,
+                      date = ymd(date))
+head(x = daily_show, n = 3)
+range(daily_show$date)
+diff(x = range(daily_show$date))
+```
+The lubridatepackage also includes functions to pull out certain elements of a date,
+including:
+• wday
+• mday
+• yday
+• month
+• quarter
+• year
+
+```{r}
+mutate(.data = daily_show1,
+show_day = wday(x = date, label = TRUE)) %>%
+select(date, show_day, guest_name) %>%
+slice(1:5)
+```
+
+```{r}
+library(faraway)
+data("worldcup")
+worldcup %>%
+  group_by(Position) %>%
+  summarize(max_saves = max(Saves))
+
+worldcup %>%
+  filter(Position == "Forward") %>%
+  group_by(Team) %>%
+  summarize(n_forwards = n(),
+            total_forward_shots = sum(Shots)) %>%
+  arrange(desc(total_forward_shots))
+
+worldcup %>%
+  filter(Position == "Defender") %>%
+  top_n(n = 1, wt = Tackles)
+
+brazil_players <- worldcup %>%
+  filter(Team == "Brazil" & Position != "Goalkeeper")
+head(brazil_players)
+
+ggplot(worldcup, mapping = aes(x = Time, y = Passes, color = Position)) +
+  geom_point() +
+  geom_rug()
+
+worldcup %>%
+  rownames_to_column(var = "Name") %>%
+  filter(Team %in% c("Spain", "Netherlands", "Germany", "Uruguay")) %>%
+  ggplot() +
+  geom_point(aes(x = Shots, y = Tackles, color = Position, shape = Team)) +
+  geom_text(mapping = aes(x = Shots, y = Tackles,
+                          color = Position, label = Name),
+            size = 2.5)
+
+worldcup %>%
+  mutate(top_4 = Team %in% c("Spain", "Netherlands", "Germany", "Uruguay")) %>%
+  ggplot() +
+  geom_point(aes(x = Time, y = Passes, color = top_4))
+
+top_teams <- worldcup %>%
+  filter(Team %in% c("Spain", "Netherlands", "Germany", "Uruguay"))
+
+ggplot(data = top_teams) +
+  geom_histogram(aes(x = Time, fill = Team))
+
+ggplot(top_teams, aes(x = Team, y = Shots)) +
+  geom_boxplot() +
+  ggtitle("Shots per player in World Cup 2010")
+
+ggplot(data = top_teams) +
+  geom_histogram(aes(x = Time, fill = Team), binwidth = 90)
+```
+
+
+
+##Chapter 4 : Reporting data results #1
+
+```{r}
+ggplot(worldcup, aes(x = Time, y = Passes,
+                     color = Position, size = Shots)) +
+  geom_point(alpha = 0.5) +
+  scale_x_continuous(name = "Time played (minutes)",
+                     breaks = 90 * c(2, 4, 6),
+                     minor_breaks = 90 * c(1, 3, 5))
+
+ggplot(chic_july, aes(x = date, y = death)) +
+  geom_line()
+
+library(RColorBrewer)
+display.brewer.pal(name = "Set1", n = 8)
+display.brewer.pal(name = "PRGn", n = 8)
+display.brewer.pal(name = "PuBuGn", n = 8)
+
+a <- ggplot(data.frame(x = 1:5, y = rnorm(5),
+                       group = letters[1:5]),
+            aes(x = x, y = y, color = group)) +
+  geom_point()
+b <- a + scale_color_brewer(palette = "Set1")
+c <- a + scale_color_brewer(palette = "Pastel2") +
+  theme_dark()
+grid.arrange(a, b, c, ncol = 3)
+
+ggplot(worldcup, aes(x = Time, y = Passes,
+                     color = Position, size = Shots)) +
+  geom_point(alpha = 0.5) +
+  scale_color_brewer(palette = "Dark2",
+                     name = "Player position")
+
+#You can also set colors manually:
+
+ggplot(worldcup, aes(x = Time, y = Passes,color = Position, size = Shots)) +
+  geom_point(alpha = 0.5) +
+  scale_color_manual(values = c("blue", "red","darkgreen", "darkgray"))
+
+#To add a text label with just the player with the most shots, you’ll want to create a new dataframe with just the top player. You can use the top_n function to do that (the wtoption is specifying that we want the top player in terms of values in the Shots column):
+
+top_player <- worldcup %>%
+  top_n(n = 4, wt = Shots) %>%
+  mutate(label = paste0(Player, ", ", Team))
+
+worldcup %>%
+  mutate(top_4 = Team %in% c("Netherlands", "Uruguay", "Spain", "Germany")) %>%
+  ggplot(aes(x = Time, y = Shots, color = top_4)) +
+  geom_vline(xintercept = 90 * 3, color = "gray", linetype = 2) +
+  geom_point(alpha = 0.5, size = 1) +
+  geom_text(data = top_player, aes(label = label, color = NULL), hjust = 1.1, vjust = 0.4) +
+  labs(x = "Time played in World Cup (minutes)", color = "Team's final\nranking") +
+  theme_few()
+```
+
+
 
