@@ -1,55 +1,94 @@
 ---
 title: "R Programminfg for Research Book Summary"
-output: github_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-
+##Setting the working director
+setwd("")
+getwd()
+list.files()
 ## Chapter 2:  Entering and cleaning data
-
-Most ﬂat ﬁles come in two general categories:
+---
+**Most ﬂat ﬁles come in two general categories:**
   1. Fixed width ﬁles : are ﬁles where a column always has the same width, for all the rows in the column.
   2. Delimited ﬁles:
-    • “.csv”: Comma-separated values
-    • “.tab,” “.tsv”: Tab-separated values
-    • Other possible delimiters: colon, semicolon, pipe (“|”)
-
-#Reading files from remote datasets
+    - “.csv”: Comma-separated values
+    - “.tab,” “.tsv”: Tab-separated values
+    - Other possible delimiters: colon, semicolon, pipe (“|”)
+---
+##Reading files from remote datasets
+```
  url <- paste0("https://raw.githubusercontent.com/cmrivers/", "ebola/master/country_timeseries.csv")
  # ebola <- read_csv(file = url)
  ## slice(.data = (select(.data = ebola, 1:3)), 1:3)
+ 
+ ```
+---
+##To build a logical expression to use in filter\you’ll need to know some of R’s logical operators.\ Some of the most commonly used ones are:
 
-#To build a logical expression to use in filter, you’ll need to know some of R’s logical operators. Some of the most commonly used ones are:
+```{r ,echo=FALSE}
+library(knitr)
+library(kableExtra)
+library(tidyverse)
 
-Operator Meaning Example
-== equals                         category == "Acting"
-!= does not equal             category != "Comedy"
-%in% is in category             %in% c("Academic", "Science")
-is.na() is missing                is.na(job)
-!is.na() is not missing         !is.na(job)
-& and                             year == 2015 & category == "Academic"
-| or                            year == 2015 | category == "Academic"
+logical_operators <- data.frame(Operator=c('==', 
+                                           '!=', 
+                                           '%in% ',
+                                           'is.na()', 
+                                           '!is.na()', 
+                                           '&',
+                                           '|' ),
+                 equals= c('equals', 
+                           'does not equals', 
+                           'is in category',
+                           'is missing', 
+                           'is not missing', 
+                           'and',
+                           'or' ),
+                 Example = c('category == "Acting"', 
+                             'category != "Comedy"', 
+                             '%in% c("Academic", "Science")',
+                             'is.na(job)', '!is.na(job)', 
+                             'year == 2015 & category == "Academic"',
+                             'year == 2015 | category == "Academic"' ))
+knitr::kable(head(logical_operators[, 1:3]), "simple")
+```
+
+## Generic code for renaming variables
+*rename(dataframe,
+  new_column_name_1 = old_column_name_1,
+  new_column_name_2 = old_column_name_2)*
+  
+  
 ```{r}
 #Loading the required libraries
+library("readr")
 library("dplyr")
 
 
 #Loading the required data
-daily_show <- read_csv(file = "D:/R_Programming/Github/SpatialDataWithR/data/daily_show_guests.csv", skip = 4)
+
+daily_show <- read_csv(file = "daily_show_guests.csv",show_col_types = FALSE)
 head(daily_show)
 #See the column names
 colnames(daily_show)
 
 
 #Renaming the column names
-daily_show <- rename(.data = daily_show, 
-                     year = YEAR,
-                     job = GoogleKnowlege_Occupation,
-                     date = Show,
-                     category = Group,
-                     guest_name = Raw_Guest_List)
+daily_show<- as_tibble(select(daily_show, 1:5))
+
+daily_show <-rename(daily_show,
+                    year = YEAR,
+                    job = GoogleKnowlege_Occupation,
+                    date = Show,
+                    category = Group,
+                    guest_name = Raw_Guest_List)
+
 head(x = daily_show, 3)
 
 
@@ -65,7 +104,7 @@ daily_show <- arrange(.data = daily_show, category)
 slice(.data = daily_show, 1:3)
 #Arranging the daatasests in dsescending orders
 daily_show <- arrange(.data = daily_show,
-                      desc(x = category))
+                      desc(x = year))
 slice(.data = daily_show, 1:2)
 
 #Filtering certain rows
@@ -73,22 +112,48 @@ scientists <- filter(.data = daily_show,
                      category == "Science")
 head(x = scientists)
 
+```
+#Chaining all the operations through pipe operator
+daily_show %>% rename(job = GoogleKnowlege_Occupation,date = Show,category = Group,guest_name = Raw_Guest_List) %>%
+                      select(-YEAR) %>%
+                      mutate(job = str_to_lower(job)) %>%
+                      filter(category == "Science")
+##Dates in R
+
+Abbreviation Meaning
+%m Month as a number (e.g., 1, 05)
+%B Full month name (e.g., August)
+%b Abbreviated month name (e.g., Aug)
+%y Two-digit year (e.g., 99)
+%Y Four-digit year (e.g., 1999)
+
+knitr::kable(data,
+ caption = "Table with kable")
+ 
+| Right | Left |
+|-------:|:------|
+|  Current format of date | format = | 
+| 10/23/2008 | “%m/%d%Y” | 
+| 08-10-23  |  “%y-%m-%d”|
+| Oct. 23 2008 |“%b. %d %Y”| 
+| October 23, 2008  |  “%B %d, %Y”|
+
+```{r , echo=FALSE}
 #Changing the column names
 library(package = "stringr")
 
 mutate(.data = daily_show,
        job = str_to_lower(string = job))
 
-
+#To convert a vector to the Date class, you can use as.Date():
+daily_show <- mutate(daily_show,
+                     date = as.Date(date, format = "%m/%d/%y"))
+head(daily_show, 3)
+class(daily_show$date)
+#calculate the range of dates
+range(daily_show$date)
+#Calculate total number of days datsets covers
+diff(range(daily_show$date))
 ```
-#Chaining all the operations through pipe operator
-daily_show %>% rename(job = GoogleKnowlege_Occupation,
-                      date = Show,
-                      category = Group,
-                      guest_name = Raw_Guest_List) %>%
- select(-YEAR) %>%
- mutate(job = str_to_lower(job)) %>%
- filter(category == "Science")
- 
  
 
