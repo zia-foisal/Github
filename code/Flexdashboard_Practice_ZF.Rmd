@@ -1,0 +1,104 @@
+---
+title: "Themed dashboard"
+output: 
+  flexdashboard::flex_dashboard:
+    theme:
+      bg: "#101010"
+      fg: "#FDF7F7" 
+      primary: "#ED79F9"
+      base_font:
+        google: Prompt
+      code_font:
+        google: JetBrains Mono
+    orientation: columns
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE,  results='hide', message=FALSE, warning=FALSE}
+library(flexdashboard)
+# Install thematic and un-comment for themed static plots (i.e., ggplot2)
+# thematic::thematic_rmd()
+```
+
+Column {data-width=650 .tabset}
+-----------------------------------------------------------------------
+
+### SubBlock Level Flood Water Volume
+
+```{r,echo=FALSE,  message=FALSE, warning=FALSE}
+library(tidyverse)
+library(sf)
+library(leaflet)
+library(mapview)
+library(RColorBrewer)
+
+JHU <- st_read(dsn ="E:/JHU Final 28 Feb/Spatial Data/Surved HH locations/GLO2002_ JHU_COVID-19_kobo_raw_data.shp")
+camp_flood <- st_read(dsn = "E:/NatHaz/zonal stat layer final/Zonal_stat_sblock_level_refactored.shp") 
+clrs <- sf.colors
+
+mapview(camp_flood, zcol = "Flood_Volu", col.regions = RColorBrewer::brewer.pal(9, "Blues"), legend = TRUE)
+```
+
+### JHU Sample
+
+```{r}
+mapview(JHU, zcol = "upazila", legend = TRUE)
+```
+
+### SubBlock Level Flood Risk Area
+
+```{r}
+clrs <- sf.colors
+
+mapview(camp_flood, zcol = "Shelter_Ar", col.regions = RColorBrewer::brewer.pal(9, "Blues"), legend = TRUE) 
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### JHU HH SIZE
+
+```{r}
+library(ggplot2)
+library(DT)
+
+fv <- JHU %>%
+  select(.,hh_size, upazila, gps_readin)%>%
+  ggplot(., aes(hh_size, color = upazila)) +
+  geom_freqpoly(binwidth = 2)
+fv
+
+```
+
+### JHU Raw Data
+
+```{r}
+# for loading our data
+library(raster)
+library(readr)
+library(readxl)
+library(sf)
+# for datasets
+library(maps)
+library(spData)
+# for creating animations
+library(magick)
+# for plotting
+library(grid)
+library(tmap)
+library(viridis)
+CN <- tm_shape(camp_flood) +
+  tm_polygons(
+    col = "Shelter_Co",
+    style = "cont",
+    pal = viridis(10, direction = -1)
+    ) +
+  tm_facets(along = "CampName") +
+  tm_layout(legend.position = c("left", "bottom"))
+tmap_animation(
+  CN, filename = "CN_Count.gif",
+  delay = 50, width = 2400, height = 1200
+  )
+knitr::include_graphics("CN_Count.gif")
+```
+
