@@ -1,0 +1,166 @@
+---
+title: "Mapping with R Examples and Practices"
+author: "Md. Zia Uddin Foisal"
+date: '2022-08-26'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Load libraries
+
+```{r}
+library(tidyverse)
+library(sf)
+library(leaflet)
+library(mapview)
+library(RColorBrewer)
+```
+
+##Load the data
+
+```{r}
+JHU <- st_read(dsn ="E:/JHU Final 28 Feb/Spatial Data/Surved HH locations/GLO2002_ JHU_COVID-19_kobo_raw_data.shp")
+camp_flood <- st_read(dsn = "E:/NatHaz/zonal stat layer final/Zonal_stat_sblock_level_refactored.shp") 
+clrs <- sf.colors
+
+mapview(camp_flood, zcol = "Flood_Volu", col.regions = RColorBrewer::brewer.pal(9, "Blues"), legend = TRUE) +mapview(JHU, zcol = "upazila", legend = TRUE)
+
+```
+
+
+```{r}
+Flood_Volume <- mapview(camp_flood, zcol = "Flood_Volu", 
+                   col.regions = RColorBrewer::brewer.pal(9, "Greens"), alpha.regions = 1,label = TRUE, homebutton = mapviewGetOption("homebutton"),
+                   layer.name = "Sub-block Level Flood Volume")
+Flood_Area <- mapview(camp_flood, zcol = "Flood_Area", 
+                   col.regions = RColorBrewer::brewer.pal(9, "Blues"), alpha.regions = 1,label = TRUE,homebutton = mapviewGetOption("homebutton"),
+                   layer.name = "Sub-block Level Flood Area")
+library(leafsync)
+sync(Flood_Area, Flood_Volume)
+```
+```{r width = 800, height = 2000}
+library(tmap)
+tm_shape(camp_flood) + 
+  tm_polygons(col = "Flood_Volu",
+          style = "jenks",
+          n = 5,
+          palette = "Purples",
+          title = "Flood Volume",
+          legend.hist = TRUE) + 
+  tm_layout(title = "Hydrodynamic Flood Model - SubBlock Level Flood Volume",
+            frame = FALSE,
+            legend.outside = TRUE,
+            bg.color = "grey70",
+            legend.hist.width = 5,
+            fontfamily = "Verdana")
+```
+
+
+
+
+```{r}
+library(leaflet)
+
+pal <- colorNumeric(
+  palette = "magma",
+  domain = camp_flood$Shelter_Co
+)
+
+pal(c(20, 50, 100 ,200, 400))
+leaflet() %>%
+  addProviderTiles(providers$Stamen.TonerLite) %>%
+  addPolygons(data = camp_flood,
+              color = ~pal(Shelter_Co),
+              weight = 0.5,
+              smoothFactor = 0.2,
+              fillOpacity = 0.5,
+              label = ~SubBlock_N) %>%
+              addLegend(position = "bottomleft", pal = pal, values = camp_flood$Shelter_Co,
+                        title = "Number of Shelters Exposed Floods")
+```
+
+
+
+```{r}
+library(plotly)
+
+us_cities = read.csv("https://raw.githubusercontent.com/plotly/datasets/master/us-cities-top-1k.csv")
+
+fig <- us_cities 
+fig <- fig %>%
+  plot_ly(
+    lat = ~lat,
+    lon = ~lon,
+    type = "scattermapbox",
+    hovertext = us_cities[,"City"],
+    marker = list(color = "fuchsia")) 
+fig <- fig %>%
+  layout(mapbox= list(
+    style = "white-bg",
+    zoom = 3,
+    center = list(lon = -93 ,lat= 41),
+    layers = list(list(
+      below = 'traces',
+      sourcetype = "raster",
+      source = list("https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}")))))
+
+fig
+
+```
+
+
+```{r}
+plot(JHU[,12])
+```
+```{r}
+# From http://leafletjs.com/examples/choropleth/us-states.js
+states <- geojsonio::geojson_read("https://rstudio.github.io/leaflet/json/us-states.geojson", what = "sp")
+
+bins <- c(0, 10, 20, 50, 100, 200, 500, 1000, Inf)
+pal <- colorBin("YlOrRd", domain = states$density, bins = bins)
+
+labels <- sprintf(
+  "<strong>%s</strong><br/>%g people / mi<sup>2</sup>",
+  states$name, states$density
+) %>% lapply(htmltools::HTML)
+
+leaflet(states) %>%
+  setView(-96, 37.8, 4) %>%
+  addProviderTiles("MapBox", options = providerTileOptions(
+    id = "mapbox.light",
+    accessToken = Sys.getenv('MAPBOX_ACCESS_TOKEN'))) %>%
+  addPolygons(
+    fillColor = ~pal(density),
+    weight = 2,
+    opacity = 1,
+    color = "white",
+    dashArray = "3",
+    fillOpacity = 0.7,
+    highlightOptions = highlightOptions(
+      weight = 5,
+      color = "#666",
+      dashArray = "",
+      fillOpacity = 0.7,
+      bringToFront = TRUE),
+    label = labels,
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto")) %>%
+  addLegend(pal = pal, values = ~density, opacity = 0.7, title = NULL,
+    position = "bottomright")
+```
+
+
+
+
+
+
+
+
+
+
+
